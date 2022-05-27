@@ -3,14 +3,15 @@ import { Database } from "../database";
 export interface FacebookAuthRepository {
   findByUserId(userId: number): Promise<FBRecord | null>;
   findByAuthId(authId: string): Promise<FBRecord | null>;
-  create(data: { authId: string; userId: number }): Promise<FBRecord>;
+  create(data: { authId: string; userId?: number }): Promise<FBRecord>;
   setAccessToken(authId: string, accessToken: string): Promise<void>;
+  setUserId(authId: string, userId: number): Promise<void>;
 }
 
 interface FBRecord {
   accessToken?: string;
   authId: string;
-  userId: number;
+  userId?: number;
 }
 
 interface FacebookAuthRepositoryDeps {
@@ -21,7 +22,7 @@ export function createFacebookAuthRepository({ db }: FacebookAuthRepositoryDeps)
   return {
     async findByUserId(userId) {
       const ret = await db
-        .selectFrom("users_facebook_auth")
+        .selectFrom("facebook_auth")
         .select(["facebook_access_token", "facebook_auth_id", "user_id"])
         .where("user_id", "=", userId)
         .executeTakeFirst();
@@ -33,12 +34,12 @@ export function createFacebookAuthRepository({ db }: FacebookAuthRepositoryDeps)
       return {
         accessToken: ret.facebook_access_token ?? undefined,
         authId: ret.facebook_auth_id,
-        userId: ret.user_id,
+        userId: ret.user_id ?? undefined,
       };
     },
     async findByAuthId(authId) {
       const ret = await db
-        .selectFrom("users_facebook_auth")
+        .selectFrom("facebook_auth")
         .select(["facebook_access_token", "facebook_auth_id", "user_id"])
         .where("facebook_auth_id", "=", authId)
         .executeTakeFirst();
@@ -50,12 +51,12 @@ export function createFacebookAuthRepository({ db }: FacebookAuthRepositoryDeps)
       return {
         accessToken: ret.facebook_access_token ?? undefined,
         authId: ret.facebook_auth_id,
-        userId: ret.user_id,
+        userId: ret.user_id ?? undefined,
       };
     },
     async create({ authId, userId }) {
       await db
-        .insertInto("users_facebook_auth")
+        .insertInto("facebook_auth")
         .values({
           facebook_auth_id: authId,
           user_id: userId,
@@ -69,12 +70,21 @@ export function createFacebookAuthRepository({ db }: FacebookAuthRepositoryDeps)
     },
     async setAccessToken(authId, accessToken) {
       await db
-        .updateTable("users_facebook_auth")
+        .updateTable("facebook_auth")
         .set({
           facebook_access_token: accessToken,
         })
         .where("facebook_auth_id", "=", authId)
         .execute();
+    },
+    async setUserId(authId, userId) {
+      await db
+        .updateTable("facebook_auth")
+        .set({
+          user_id: userId,
+        })
+        .where("facebook_auth.facebook_auth_id", "=", authId)
+        .executeTakeFirstOrThrow();
     },
   };
 }

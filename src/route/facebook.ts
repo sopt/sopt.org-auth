@@ -25,7 +25,7 @@ export function createFacebookRoute({ services }: FacebookRouteDeps) {
 
       if (!ret) {
         res.status(400).json({
-          message: "인증에 실패했습니다.",
+          message: "SOPT 회원 인증에 실패했습니다.",
         });
         return;
       }

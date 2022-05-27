@@ -5,7 +5,7 @@ import { UserRepository } from "../repository/user";
 const SOPT_NOTICE_GROUP_ID = "1392673424331756";
 
 export interface UserService {
-  verifySOPTUser(userId: number): Promise<boolean>;
+  verifyByFacebook(code: string): Promise<boolean>;
 }
 
 interface UserServiceDeps {
@@ -20,25 +20,29 @@ export function createUserService({
   userRepository,
 }: UserServiceDeps): UserService {
   return {
-    async verifySOPTUser(userId) {
-      const userInfo = await userRepository.getUserByUserId(userId);
-      if (userInfo?.is_sopt_member) {
-        return true;
-      }
-
-      const fbInfo = await facebookAuthRepository.findByUserId(userId);
-      if (!fbInfo || !fbInfo.accessToken) {
+    async verifyByFacebook(code) {
+      const accessToken = await facebookAPIRepository.getAccessTokenByCode(code);
+      if (!accessToken) {
         return false;
       }
 
-      const groupInfo = await facebookAPIRepository.getGroupInfo(fbInfo.authId, fbInfo.accessToken);
+      const fbUserInfo = await facebookAPIRepository.getAccessTokenInfo(accessToken);
+      const fbInfo = await facebookAuthRepository.findByAuthId(fbUserInfo.userId);
+      if (!fbInfo) {
+        return false;
+      }
+      const groupInfo = await facebookAPIRepository.getGroupInfo(fbInfo.authId, accessToken);
 
       const soptNotice = groupInfo.find((group) => group.groupId === SOPT_NOTICE_GROUP_ID);
       if (!soptNotice) {
         return false;
       }
 
-      await userRepository.setUserVerified(userId);
+      const createdUser = await userRepository.createUser({
+        name: fbUserInfo.userId,
+      });
+      await facebookAuthRepository.setUserId(fbInfo.authId, createdUser.userId);
+
       return true;
     },
   };

@@ -9,16 +9,21 @@ interface VerifyRouteDeps {
   authUtil: AuthUtil;
 }
 
-export function createVerifyRoute({ services, authUtil }: VerifyRouteDeps) {
+export function createVerifyRoute({ services }: VerifyRouteDeps) {
   const router = Router();
 
   router.post(
     "/facebook",
-    authUtil.authRequired(),
     asyncRoute(async (req, res) => {
-      const userId = authUtil.getUserId(req);
+      const code = req.query.code;
+      if (typeof code !== "string") {
+        res.status(400).json({
+          message: "잘못된 code 값입니다.",
+        });
+        return;
+      }
 
-      const success = await services.userService.verifySOPTUser(userId);
+      const success = await services.userService.verifyByFacebook(code);
 
       res.json({
         success,

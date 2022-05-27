@@ -2,6 +2,8 @@ import { FacebookAPIRepository } from "../repository/facebookAPI";
 import { FacebookAuthRepository } from "../repository/facebookAuth";
 import { UserRepository } from "../repository/user";
 
+const SOPT_NOTICE_GROUP_ID = "1392673424331756";
+
 export interface AuthService {
   authByFacebook(code: string): Promise<{
     authId: string;
@@ -30,21 +32,30 @@ export function createAuthService({
 
       const fbUserInfo = await facebookAPIRepository.getAccessTokenInfo(accessToken);
 
-      let userInfo = await facebookAuthRepository.findByAuthId(fbUserInfo.userId);
+      let authInfo = await facebookAuthRepository.findByAuthId(fbUserInfo.userId);
 
-      if (!userInfo) {
+      if (!authInfo) {
+        const groupInfo = await facebookAPIRepository.getGroupInfo(fbUserInfo.userId, accessToken);
+        const soptNotice = groupInfo.find((group) => group.groupId === SOPT_NOTICE_GROUP_ID);
+        if (!soptNotice) {
+          return null;
+        }
+
         const createdUser = await userRepository.createUser({ name: fbUserInfo.userName });
-        userInfo = await facebookAuthRepository.create({
+        authInfo = await facebookAuthRepository.create({
           authId: fbUserInfo.userId,
           userId: createdUser.userId,
         });
       }
-
       await facebookAuthRepository.setAccessToken(fbUserInfo.userId, accessToken);
 
+      if (!authInfo.userId) {
+        throw new Error("It's currently not possible.");
+      }
+
       return {
-        authId: userInfo.authId,
-        userId: userInfo.userId,
+        authId: authInfo.authId,
+        userId: authInfo.userId,
       };
     },
   };

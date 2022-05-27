@@ -1,8 +1,7 @@
-CREATE TABLE users (
+CREATE TABLE sopt_user (
     id SERIAL PRIMARY KEY,
     name text NOT NULL,
-    bio text NOT NULL,
-	  is_sopt_member boolean
+    bio text NOT NULL
 --  email text NOT NULL,
 --  private_profile boolean NOT NULL,
 --  school text NOT NULL,
@@ -12,11 +11,11 @@ CREATE TABLE users (
 );
 
 
-CREATE TABLE users_facebook_auth (
+CREATE TABLE facebook_auth (
   id SERIAL PRIMARY KEY,
 	facebook_access_token text,
 	facebook_auth_id text NOT NULL,
-  user_id INT NOT NULL,
+  user_id INT,
 
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (user_id) REFERENCES sopt_user(id)
 )
